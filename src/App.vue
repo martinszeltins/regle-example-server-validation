@@ -19,7 +19,7 @@
 
             <div class="flex items-center gap-4 mt-4">
                 <button type="submit" class="bg-green-800 text-white rounded py-2 px-5 hover:bg-green-900 transition hover:active:bg-green-950">
-                    Submit
+                    {{ isLoading ? 'Loading...' : 'Submit' }}
                 </button>
             </div>
 
@@ -32,13 +32,19 @@
 
 <script setup lang="ts">
     import { computed, ref } from 'vue'
+    import { required, minLength } from '@regle/rules'
     import FieldError from './components/FieldError.vue'
-    import { applyIf, minLength, required } from '@regle/rules'
-    import { useRegle, type RegleComputedRules } from '@regle/core'
+    import { useRegle, type RegleComputedRules, type RegleExternalErrorTree } from '@regle/core'
 
     const isFormValid = ref(false)
+    const isLoading = ref(false)
 
-    const form = ref({
+    interface Form {
+        firstName: string
+        lastName: string
+    }
+
+    const form = ref<Form>({
         firstName: '',
         lastName: ''
     })
@@ -47,22 +53,37 @@
         return {
             firstName: {
                 required,
+                minLength: minLength(10),
             },
             lastName: {
                 required,
+                minLength: minLength(10),
             }
         } satisfies RegleComputedRules<typeof form>
     })
 
-    const { r$ } = useRegle(form, rules)
+    const externalErrors = ref<RegleExternalErrorTree<Form>>({})
+
+    const { r$ } = useRegle(form, rules, { externalErrors })
 
     const submit = async () => {
         isFormValid.value = false
 
         const { result } = await r$.$validate()
 
-        if (result) {
-            isFormValid.value = true
+        if (result === false) return
+
+        isLoading.value = true
+
+        // Fake API request
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Fake backend validation errors
+        externalErrors.value = {
+            firstName: ['First name is already taken'],
+            lastName: ['Last name is already taken']
         }
+
+        isLoading.value = false
     }
 </script>
